@@ -1,0 +1,432 @@
+---
+title: "Data Visualization"
+author: "Nimra Irshad"
+date: "2024-04-25"
+output:
+  html_document: default
+  pdf_document: default
+  word_document: default
+---
+#### This report contains detailed analysis for Two Different Datasets: Crime and Temperature for the Year 2023 for the City of Colchester, Essex, UK.  
+
+
+# Detailed Analysis for the Crime Dataset 2023
+#### The Crime dataset comprises of different components that include the category of the crime committed, the street name and ID where the crime was carried out, the Latitude and Longitude Coordinates, the proximity of the police station to the crime and lastly the outcome status for the crime. To begin analysing the data, we start off by loading the dataset to analyse different statistics. This includes conducting a thorough analysis of the different types of variables, the total number of observations for the dataset and also incorporating how to cater to missing values within the data. 
+```{r}
+CRIME <- read.csv("crime23.csv")
+head(CRIME)
+names(CRIME)                       # Variable Names
+
+dim(CRIME)                         # Checking dimensions of dataset
+
+```
+```{r}
+str(CRIME)
+```
+
+## Cleaning and Pre-processing for the Crime Dataset
+#### After observing that the dataset contained variables with missing values, the first step was to initiate a data cleanse by removing all variables with N/A values. The variable which contained a few missing values were also pre-processed. The date column for the dataset had a different format and had to be pre-processed for a proper Date Format for visualization purposes.
+```{r}
+attach(CRIME)
+
+# Checking Missing values
+(missing_values <- colSums(is.na(CRIME)) / nrow(CRIME))
+(variable_name <- names(missing_values)[which.max(missing_values)])
+
+# Removing Variables with MOST missing values
+CRIME <- CRIME[ ,!colnames(CRIME) %in% variable_name]
+
+# Replacing N/A values with "Unknown" for Character class Variables 
+CRIME$outcome_status[is.na(CRIME$outcome_status)] <- "Unknown"
+
+# Converting date variable into Proper Date Format by Adding a day to the string date :Setting the day to be the 01 for every month
+CRIME$date <- gsub("\\[|\\]", "", CRIME$date)
+CRIME$date <- paste0(CRIME$date, "-01")               
+CRIME$date <- as.Date(CRIME$date)
+
+# Converting Categorical Variable to Numeric and creating a New Column
+CRIME$outcome_status_numeric <- as.numeric(factor(CRIME$outcome_status))
+CRIME$category_numeric <- as.numeric(factor(CRIME$category))
+
+names(CRIME)      # Cleaned and Pre-processed Dataset now to be used for Visualization
+head(CRIME)
+```
+#### After cleaning and pre-processing, we move forward with analyses starting off with summary statistics for the CRIME Dataset stated below.
+```{r}
+# Summary Statistics for the Dataset
+summary(CRIME)
+```
+
+#### A Two-Way Table was implemented between category of the crime with respect to police station proximity type. There are two types of Police Stations which include: Force and BTP. BTP represents a British Transport Police Location and lies within normal boundaries of the police force while Force represents a normal police force location.
+```{r}
+attach(CRIME)
+# Display the two-way table Between Crime category and Location Type
+(CRIME_Two_Way_TABLE <- table(category, location_type))
+
+```
+#### From the Two-Way-Table, it is observed that most of the crimes fell under the jurisdiction of the Force Police Location.
+
+
+#### Moving on with the visualizing the data, we first start off with a Bar Plot which depicts the Crime Rate Spread over the entire year 2023.
+
+```{r}
+library(ggplot2)
+library(plotly)
+
+CRIME_Bar_Plot <- ggplot(CRIME, aes(x = date)) +
+  geom_bar(fill = scales::alpha("cyan", 0.7), color = "black") +
+  labs(title = "Monthly Crime Rate",
+       x = "Month",
+       y = "Crime Count") + theme_minimal()
+
+ggplotly(CRIME_Bar_Plot)
+```
+#### As displayed by the Bar Plot, the crime count for the year 2023 remained pretty high for Colchester city throughout the year with over 400+ crimes committed on average, with just a slight dip in the month of February. During the month of January and September, we were able to observe the highest crime rates.
+
+#### Once we have visualized the crime rate over the months for the year 2023, we can now observe the different category of crime trend with the help of a Box plot. The different types of crime categories involve:
+- "anti-social-behaviour" 
+- "bicycle-theft"
+- "burglary"             
+- "criminal-damage-arson" 
+- "drugs"                 
+- "other-theft"          
+- "possession-of-weapons"
+- "public-order"          
+- "robbery"              
+- "shoplifting"           
+- "theft-from-the-person" 
+- "vehicle-crime"        
+- "violent-crime"         
+- "other-crime"          
+```{r}
+
+CRIME_Box_Plot <- ggplotly(
+  ggplot(CRIME, aes(x = category)) +
+    geom_bar(fill = rainbow(length(unique(category)))) +
+    theme_minimal() +
+    theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1)) +
+    labs(title = "Crime Categories Variation", x = "Crime Categories")
+)
+
+CRIME_Box_Plot
+```
+#### It can be seen from this box plot, that the “Violent-Crime” category has the most number of assaults registered with the count being even above 2000 times.
+
+
+
+#### Next, we have density plot for the Outcome status for the crimes. Since, the outcome status for the crimes was a categorical variable, we had to first convert it to a numerical class. The categories for different crimes were as below:
+- "Unknown"                                            
+- "Investigation complete; no suspect identified"      
+- "Unable to prosecute suspect"                        
+- "Status update unavailable"                          
+- "Court result unavailable"                           
+- "Action to be taken by another organisation"         
+- "Local resolution"                                   
+- "Further action is not in the public interest"       
+- "Awaiting court outcome"                             
+- "Offender given a caution"                           
+- "Formal action is not in the public interest"        
+- "Further investigation is not in the public interest"
+- "Suspect charged as part of another case"            
+- "Under investigation"                
+
+```{r}
+# Calculating the Density
+Density_OS <- density(outcome_status_numeric)
+
+CRIME_Density_Plot <- plot_ly() %>%
+  add_trace(x = Density_OS$x, y = Density_OS$y, type = "scatter", mode = "lines", 
+            line = list(color = "blue"), name = "Density Plot") %>%
+  layout(title = "Density Plot For Outcome Status of Crime",
+         xaxis = list(title = "Outcome Status of the Crime"),
+         yaxis = list(title = "Density"))
+
+CRIME_Density_Plot
+```
+#### It can be seen from the density plot that the highest crime outcome status was directly resolved by the local police station which came under the crime category “Local resolution” followed by the second highest outcome status category “Further investigation is not in the public interest”.
+
+
+
+
+
+#### As the dataset was composed of the approximate latitude and longitude coordinates for the crime location, we visualise this using a scatter plot with respect to the Police station Location type.
+```{r}
+# Scatter plot for Location_type with respect to Latitude and Longitude
+CRIME_Scatter_Plot <- ggplot(CRIME, aes(x = long, y = lat, color = location_type)) +
+  geom_point() +
+  labs(title = "Scatter Plot of Crime Police Locations",
+       x = "Longitude", y = "Latitude",
+       color = "Crime Police Locations")
+
+ggplotly(CRIME_Scatter_Plot)
+```
+#### The scatter plot shows the wide range spread of the crime committed location with respect to the Police station locations. It can be clearly observed that most crimes were committed with the proximity of the Force police force locations, with higher crime rates observed between 0.89 - 0.91 longitude and 51.885 - 51.895 Latitude coordinates.
+
+
+#### For statistical analyses, a correlation matrix would help give a better understanding of different components of the dataset, therefore, we did a correlation analysis of the street (where the crime was reported) with respect to crime category and its outcome status.
+```{r}
+library(corrplot)
+library(heatmaply)
+
+(CRIME_Cor_matrix <- cor(CRIME[, c("category_numeric", "outcome_status_numeric", "street_id")]))
+
+heatmaply(CRIME_Cor_matrix, 
+          main = "Correlation Matrix Featuring Crime category and Outcome Status With Respect to Street",
+          fontsize_row = 7, 
+          fontsize_col = 7,
+          layout_kwargs = list(width = 600, height = 400))
+
+```
+#### The correlation of Street with crime category came out as negative depicting that there was very weak linear relationship between the two while correlation of Street with crime outcome status came out as positive showing a positive linear relationship between the two.
+
+
+#### Moving on towards time series visualization for the Crime Category throughout the year, we plotted a time series plot.
+```{r}
+#count_data <- CRIME %>% group_by(date, category_numeric) %>% summarise(count = n())
+
+CRIME_Time_Series_Plot <- plot_ly(data = CRIME, x = ~date, color = ~category, type = 'scatter', mode = 'lines') %>%
+  layout(title = "Time Series Plot of Crime Categories Over Time",
+         xaxis = list(title = "Date"),
+         yaxis = list(title = "Frequency"),
+         colorway = c("#1f77b4", "#ff7f0e", "#2ca02c", "#d62728", "#9467bd", "#8c564b", "#e377c2", "#7f7f7f", "#bcbd22", "#17becf",
+                      "#aec7e8", "#ffbb78", "#98df8a", "#ff9896"))
+
+CRIME_Time_Series_Plot
+```
+#### As also displayed by the box plot, Violent crime category had the most number of counts between the entire year. Through time series plot, it can be seen that the highest rate of “violent-crime” was observed in the month of December with the count going as above as 2632 times.
+
+
+
+#### Since the dataset contained latitude and longitude coordinates, we were able to perform a leaflet plot which shows the profuse spread of different types of crime committed over the city of Colchester.
+```{r}
+library(leaflet)
+
+CRIME_Leaflet_Plot <- leaflet(data = CRIME) %>%
+  addTiles() %>%  addMarkers(~long, ~lat, popup = ~as.character(CRIME$category))  
+
+CRIME_Leaflet_Plot
+
+```
+
+
+
+
+#### The visualization of the crime dataset offers a comprehensive overview of crime trends, categories, and outcomes. Through interactive plots, patterns emerge, aiding in understanding crime distribution, frequency, and the effectiveness of law enforcement measures.
+
+
+
+# Detailed Analysis for the Temperature Dataset 2023
+#### The Temperature dataset contains different  meteorological components which included the Average, minimum and maximum temperature Colchester city, observed from 1 station ID, the different windspeed and wind direction, Average humidity, average, precipitation and more other meteorological parameters spread over different months. In order to analyze such dataset, we start off with Loading the dataset, analyzing the different statistics for the dataset, the type of classes the variables had, the total number of observations for the dataset and how many missing values the data contained.
+```{r}
+TEMPERATURE <- read.csv("temp2023.csv")
+head(TEMPERATURE)
+names(TEMPERATURE)
+
+dim(TEMPERATURE)
+```
+
+
+
+
+
+```{r}
+str(TEMPERATURE)
+
+```
+# Cleaning and Pre-processing for the Temperature Dataset
+#### After observing that the dataset contained variables with missing values, the first step was to initiate a data cleanse by removing all variables with N/A values. The variable which contained a few missing values were also pre-processed.
+```{r}
+# Checking Missing values
+(missing_values <- colSums(is.na(TEMPERATURE)) / nrow(TEMPERATURE))
+(variable_name <- names(sort(missing_values, decreasing = TRUE)[1:2]))
+
+# Removing Variables with MOST missing values
+TEMPERATURE <- TEMPERATURE[ , !colnames(TEMPERATURE) %in% variable_name]
+
+names(TEMPERATURE)
+```
+```{r}
+# Pre-processing
+
+TEMPERATURE$Precmm[is.na(TEMPERATURE$Precmm)] <- 0
+TEMPERATURE$lowClOct[is.na(TEMPERATURE$lowClOct)] <- 0
+TEMPERATURE$SunD1h[is.na(TEMPERATURE$SunD1h)] <- 0
+
+# Checking for missing values again
+(missing_values <- colSums(is.na(TEMPERATURE)) / nrow(TEMPERATURE))   
+
+# Converting Date column to Proper Date format
+TEMPERATURE$Date <- as.Date(TEMPERATURE$Date, format = "%m/%d/%Y")
+head(TEMPERATURE)
+```
+#### The date column for the dataset had a different format and had to be pre-processed for a proper Date Format for visualization purposes. Cleaned and Pre-processed Dataset is now ready to be used for visualization.
+
+#### After cleaning and pre-processing, we move forward with analyses starting off with summary statistics for the Temperature Dataset stated below.
+```{r}
+summary(TEMPERATURE)
+```
+
+
+#### A Two-Way Table was implemented between Station Id the data was generated from with respect to direction of Wind.
+```{r}
+attach(TEMPERATURE)
+
+# Displaying the Two-Way Table Between Station_ID and Wind Direction
+(TEMP_Two_Way_TABLE <- table(station_ID, WindkmhDir))
+```
+#### The Two-Way_Table shows the different counts of wind direction observed by the station ID 3590. It can be seen the mostly the wind direction was from west to south side (WSW). 
+
+#### Moving on with the visualizing the data, we first start off with a Bar Plot which depicts the Wind Direction.
+
+```{r}
+TEMP_Bar_Plot <- ggplotly(
+  ggplot(TEMPERATURE, aes(x = WindkmhDir)) +
+    geom_bar(fill = "magenta", color = "black") +
+    labs(title = "Variation in Wind Direction",
+         x = "Wind Direction",
+         y = "Count") +
+    theme_minimal()
+)
+
+TEMP_Bar_Plot
+```
+#### As displayed by the Bar Plot, mostly the winds blew from WEST-SOUTH-WEST direction for the Colchester city with over 40+ times.
+
+
+#### We then visualized the Average temperature using a Histogram Plot.
+```{r}
+TEMP_Histogram_Plot <- plot_ly(
+  x = TemperatureCAvg,
+  type = "histogram",
+  histnorm = "probability density",
+  marker = list(color = "blue", line = list(color = "black", width = 1)),
+  opacity = 0.7
+) %>%
+  layout(
+    title = "Histogram Plot For Average Temperature",
+    xaxis = list(title = "Average Temperature in Degree Celsius"),
+    yaxis = list(title = "Density")
+  )
+
+TEMP_Histogram_Plot
+```
+#### It can be seen, the average temperature recorded was 9 Degree Celsius for the Colchester city over the span of the year 2023.
+
+
+#### A Box and Whiskers plot was then used for visualizing the Wind direction spread over the entire year. Different variation of wind direction was observed through the months. 
+```{r}
+# Extracting Months from the Date Format for Better Visualization
+TEMPERATURE$Month <- format(as.Date(TEMPERATURE$Date), "%B")
+
+TEMP_Box_Plot <- plot_ly(
+  data = TEMPERATURE,
+  x = ~WindkmhDir,
+  y = ~Month,
+  type = "box",
+  orientation = "h"
+) %>%
+  layout(
+    title = "Boxplot of Wind Speed (KmH) With Respect To Months",
+    xaxis = list(title = "WindSpeed"),
+    yaxis = list(title = "Month")
+  )
+
+TEMP_Box_Plot
+```
+
+#### The scatter plot shows the wide range spread of the Sunshine Duration with respect to the average temperature throught the year. It can be clearly observed that the maximum temperature was observed in between the months of June, July, August and September highlighting that the Colchester city observes summer season during that time. More sunshine was also seen to be observed during these months.
+```{r}
+
+TEMP_Scatter_Plot <- plot_ly(
+  data = TEMPERATURE,
+  x = ~Month,
+  y = ~SunD1h,
+  color = ~TemperatureCMax,
+  type = "scatter",
+  mode = "markers"
+) %>%
+  layout(
+    title = "Scatter Plot of Sunshine Duration",
+    xaxis = list(title = "Month"),
+    yaxis = list(title = "Sunshine Duration in Hours"),
+    colorway = 
+      c("#1f77b4", "#ff7f0e", "#2ca02c", "#d62728", "#9467bd", "#8c564b", "#e377c2", "#7f7f7f", "#bcbd22", "#17becf")
+  )
+
+TEMP_Scatter_Plot
+```
+
+#### For statistical analyses, a correlation matrix would help give a better understanding of different Meteorological Parameters of the dataset, therefore, we did a correlation analysis of mean temperature, average dew temperature, wind speed, humidity, precipitation, cloudiness and hourly sunshine. 
+```{r}
+(TEMPERATURE_Cor_matrix <- cor(TEMPERATURE[, c("TemperatureCAvg", "TdAvgC", "HrAvg", "WindkmhInt", "Precmm", "TotClOct", "SunD1h")]))
+
+TEMPERATURE_Cor_Matrix_Plot <- plot_ly( z = TEMPERATURE_Cor_matrix,
+  x = colnames(TEMPERATURE_Cor_matrix),
+  y = colnames(TEMPERATURE_Cor_matrix),
+  type = "heatmap",
+  colorscale = "Viridis"
+) %>% 
+  layout(
+    title = "Correlation Matrix For Meteorological Parameters",
+    xaxis = list(title = "Meteorological Parameters"),
+    yaxis = list(title = "Meteorological Parameters")
+  )
+
+TEMPERATURE_Cor_Matrix_Plot
+```
+#### The correlation of sunshine with respect to temperature, and mean dew point temperature came out as positive showing a strong linear relationship between the two. However, the correlation of the hourly sunshine with respect to wind speed, humidity, precipitation and cloudiness came out as negative which depected a very weak linear relationship between the parameters. This correlation heatmap shows that whenever sunshine was observed, the humidity factor remained quite low. The darker color of th plot shows a negative correlation while the lighter colour depicts a positive corelation between the elements.  
+
+
+#### Moving on towards time series visualization for the Cloudiness Factor observed throughout the year, we plotted a time series plot.
+```{r}
+
+TEMPERATURE$Date <- as.Date(TEMPERATURE$Date)
+TEMP_Time_Series_Plot <- plot_ly(
+  data = TEMPERATURE,
+  x = ~Date,
+  y = ~TotClOct,
+  type = "scatter",
+  mode = "lines",
+  name = "Total Cloudiness",
+  line = list(smoothing = 0.9)
+) %>%
+  layout(
+    title = "Time Series Plot For Total Cloudiness over the Year",
+    xaxis = list(title = "Months"),
+    yaxis = list(title = "Total Cloudiness")
+  )
+
+TEMP_Time_Series_Plot
+```
+#### As displayed by time series plot, cloudiness was observed the most during the winter seasons. Since the above plot was a dit edgy and it was difficult to visualize, we moved forward with smoothing the cloudiness pattern. 
+
+```{r}
+TEMP_Smoothed_Cloudiness <- TEMPERATURE %>%
+  mutate(Date = as.Date(Date)) %>%
+  group_by(Date) %>%
+  summarise(TotClOct = mean(TotClOct)) %>%
+  mutate(Smoothed_TotClOct = smooth.spline(TotClOct)$y)
+
+TEMP_Smoothed_Cloudiness <- ggplot(TEMP_Smoothed_Cloudiness, aes(x = Date, y = Smoothed_TotClOct)) +
+  geom_line(color = "blue") +
+  labs(title = "Variation of Total Cloudiness Over the Entire Year",
+       x = "Months",
+       y = "Total Cloudiness")
+
+
+ggplotly(TEMP_Smoothed_Cloudiness)
+```
+
+#### A line chart, usually show the changes in cloudiness observed in Colchester city over the entire year. The smoothing factor helpsapplies a statistical approach which further enables in reducing the daily variation in the pattern.
+
+
+#### In summary, the visualization of meteorological parameters in the temperature dataset provides valuable insights into temperature variations over year 2023 for the Colchester city. These interactive plots offer a clear understanding of temperature trends and their correlations with factors like wind speed, humidity, and sunshine duration.
+
+
+
+
+
+
+
+
+
